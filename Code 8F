@@ -1,0 +1,172 @@
+#include<iostream>
+#include<cstdio>
+#include<cstring> 
+#include<algorithm>
+
+using namespace std;
+
+int read(){
+   int s=0,w=1;
+   char ch=getchar();
+   while(ch<'0'||ch>'9') {if(ch=='-')w=-1;ch=getchar();}
+   while(ch>='0'&&ch<='9') s=s*10+ch-'0',ch=getchar();
+   return s*w;
+}
+
+typedef struct node{
+    int height;
+    long long val;
+    node *ls, *rs;
+} * AVLNode;
+
+int get_height(AVLNode T){
+    if(T==NULL) return 0;
+    return T->height;
+}
+
+void update_height(AVLNode &T){
+    T->height = max(get_height(T->ls), get_height(T->rs)) + 1;
+}
+
+inline AVLNode LL_RightRotation(AVLNode &T){
+    node *tmp = T->ls;
+    T->ls = tmp->rs;
+    tmp->rs = T;
+    update_height(T);
+    update_height(tmp);
+    return tmp;
+}
+
+inline AVLNode RR_LeftRotation(AVLNode &T){
+    node *tmp = T->rs;
+    T->rs = tmp->ls;
+    tmp->ls = T;
+    update_height(T);
+    update_height(tmp);
+    return tmp;
+}
+
+AVLNode LR_RightRotation(AVLNode &T){
+    T->ls = RR_LeftRotation(T->ls);
+    return LL_RightRotation(T);
+}
+
+AVLNode RL_LeftRotation(AVLNode &T){
+    T->rs = LL_RightRotation(T->rs);
+    return RR_LeftRotation(T);
+}
+
+AVLNode Max_Node(AVLNode T){
+    if(T==NULL) return NULL;
+    while(T->rs!=NULL) T = T->rs;
+    return T;
+}
+
+AVLNode Min_Node(AVLNode T){
+    if(T==NULL) return NULL;
+    while(T->ls!=NULL) T = T->ls;
+    return T;
+}
+
+AVLNode Insert(AVLNode &T,int k){
+    if(T==NULL){
+        T = (node *)malloc(sizeof(node));
+        T->val = k;
+        T->height = 1;
+        T->ls = NULL;
+        T->rs = NULL;
+    }
+    else if(k<T->val){
+        Insert(T->ls, k);
+        update_height(T);
+        if(get_height(T->ls)-get_height(T->rs)==2){
+            if(k<T->ls->val) T = LL_RightRotation(T);
+            else T = LR_RightRotation(T);
+        }
+    }
+    else{
+        Insert(T->rs, k);
+        update_height(T);
+        if(get_height(T->rs)-get_height(T->ls)==2){
+            if(k>=T->rs->val) T = RR_LeftRotation(T);
+            else T = RL_LeftRotation(T);
+        }
+    }
+    return T;
+}
+
+AVLNode Delete(AVLNode &T,int k){
+    if(T==NULL) return NULL;
+    if(k>T->val){
+        T->rs = Delete(T->rs, k);
+        update_height(T);
+        if(get_height(T->ls)-get_height(T->rs)==2){
+            if(get_height(T->ls->ls)>get_height(T->ls->rs)) T = LL_RightRotation(T);
+            else T = LR_RightRotation(T);
+        }
+    }
+    else if(k<T->val){
+        T->ls = Delete(T->ls, k);
+        update_height(T);
+        if(get_height(T->rs)-get_height(T->ls)==2){
+            if(get_height(T->rs->rs)>get_height(T->rs->ls)) T = RR_LeftRotation(T);
+            else T = RL_LeftRotation(T);
+        }
+    }
+    else{
+        if(T->ls==NULL&&T->rs==NULL) T = NULL;
+        else if(T->ls==NULL) T = T->rs;
+        else if(T->rs==NULL) T = T->ls;
+        else{
+            if(get_height(T->ls)>get_height(T->rs)){
+                AVLNode tmp = Max_Node(T->ls);
+                T->val = tmp->val;
+                T->ls = Delete(T->ls, tmp->val);
+            }
+            else{
+                AVLNode tmp = Min_Node(T->rs);
+                T->val = tmp->val;
+                T->rs = Delete(T->rs, tmp->val);
+            }
+            update_height(T);
+        }
+    }
+    return T;
+}
+
+AVLNode Search(AVLNode T,int k){
+    AVLNode tmp = NULL;
+    if(T==NULL) return NULL;
+    if(k<T->val&&T->ls!=NULL) tmp = Search(T->ls, k);
+    else if(k>T->val&&T->rs!=NULL) tmp = Search(T->rs, k);
+    else return T;
+    if(abs(T->val-k)<abs(tmp->val-k)||(abs(T->val-k)==abs(tmp->val-k)&&T->val<tmp->val)) return T;
+    else return tmp;
+}
+
+bool Empty(AVLNode T){
+    return T == NULL;
+}
+
+int main(){
+    int n, trans;
+    long long ans = 0;
+    scanf("%d", &n);
+    node *head = NULL;
+    for (int i = 1; i <= n;++i){
+        long long a,b;
+        scanf("%lld %lld", &a ,&b);
+        if(Empty(head)){
+            trans = a;
+            head = Insert(head, b);
+        }
+        else if(trans==a) head = Insert(head, b);
+        else{
+            AVLNode adopt = Search(head, b);
+            ans += abs(adopt->val-b);
+            head = Delete(head, adopt->val);
+        }
+    }
+    cout << ans;
+    return 0;
+}
